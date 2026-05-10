@@ -4,19 +4,19 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](tsconfig.json)
 
-Beräkna **ROT- och RUT-avdrag** enligt Skatteverkets regler. Hanterar tak per
-person, gemensamt totaltak, redan utnyttjade avdrag och fördelning mellan
-flera personer i hushållet. Validerar även faktureringsfält enligt blankett
-SKV 4528.
+Calculate **ROT and RUT tax deductions** according to the rules of the
+Swedish Tax Agency (Skatteverket). Handles per-person caps, the combined
+total cap, already-used deductions, and split between several persons in
+a household. Also validates invoice fields per form SKV 4528.
 
-Ren funktionspaket — inga API-anrop, inga dependencies, fungerar i Node och
-browser.
+Pure function package — no API calls, no dependencies, works in Node and
+the browser.
 
-## Varför
+## Why
 
-Reglerna ändras varje år (RUT-taket höjdes 2024, ROT-procenten var tillfälligt
-50% under hösten 2025, tillbaka på 30% från 1 jan 2026). Att hårdkoda
-`amount * 0.3` i din checkout är en bugg som väntar på att hända.
+The rules change every year (RUT cap was raised in 2024; the ROT rate
+was temporarily 50% during late 2025 and reverted to 30% on 1 Jan 2026).
+Hard-coding `amount * 0.3` in your checkout is a bug waiting to happen.
 
 ## Install
 
@@ -27,108 +27,115 @@ npm install rot-rut-avdrag
 ## Quickstart
 
 ```ts
-import { beraknaAvdrag } from "rot-rut-avdrag";
+import { calculateDeduction } from "rot-rut-avdrag";
 
-// Enkel ROT-beräkning
-const r = beraknaAvdrag({
-  typ: "ROT",
-  arbetskostnad: 50_000,
-  personer: [{ id: "lucas" }],
+const r = calculateDeduction({
+  kind: "ROT",
+  laborCost: 50_000,
+  persons: [{ id: "lucas" }],
 });
 
-console.log(r.totaltAvdrag);    // 15_000  (30% av 50 000)
-console.log(r.kundbetalning);   // 35_000
+console.log(r.totalDeduction);   // 15_000  (30% of 50 000)
+console.log(r.customerPayment);  // 35_000
 ```
 
-## Regler 2026 (verifierade)
+## Rules for 2026 (verified)
 
 | | ROT | RUT |
 |---|---|---|
-| Procentsats | **30 %** | **50 %** |
-| Max per person | 50 000 kr | (delar totaltaket) |
-| Gemensamt totaltak per person | **75 000 kr (ROT + RUT)** | |
+| Rate | **30%** | **50%** |
+| Per-person cap | 50 000 SEK | (shares the combined cap) |
+| Combined cap (ROT + RUT) per person | **75 000 SEK** | |
 
-Två sambor som båda äger huset kan tillsammans utnyttja **150 000 kr** per år.
+Two cohabitants who both own the home can together claim **150 000 SEK**
+per year.
 
-> **Källor (verifierade 2026-05-10):** [Skatteverket — ROT och
+> **Sources (verified 2026-05-10):** [Skatteverket — ROT and
 > RUT](https://www.skatteverket.se/foretag/skatterochavdrag/rotochrut.4.2ef18e6a125660db8b080002674.html),
-> [Offerta 2026-guide](https://offerta.se/guider/ovrigt/rot-och-rutavdrag).
+> [Offerta 2026 guide](https://offerta.se/guider/ovrigt/rot-och-rutavdrag).
 
-## Vanliga scenarier
+## Common scenarios
 
-### Två sambor delar avdraget
+### Two cohabitants share the deduction
 
 ```ts
-beraknaAvdrag({
-  typ: "ROT",
-  arbetskostnad: 400_000,
-  personer: [{ id: "a" }, { id: "b" }],
+calculateDeduction({
+  kind: "ROT",
+  laborCost: 400_000,
+  persons: [{ id: "a" }, { id: "b" }],
 });
-// totaltAvdrag: 100_000 (50 000 var, taket per person)
+// totalDeduction: 100_000 (50 000 each, capped per person)
 ```
 
-### Custom fördelning (en betalar mer)
+### Custom split (one person pays more)
 
 ```ts
-beraknaAvdrag({
-  typ: "ROT",
-  arbetskostnad: 100_000,
-  personer: [{ id: "a" }, { id: "b" }],
-  fordelning: { a: 0.7, b: 0.3 },
+calculateDeduction({
+  kind: "ROT",
+  laborCost: 100_000,
+  persons: [{ id: "a" }, { id: "b" }],
+  split: { a: 0.7, b: 0.3 },
 });
 ```
 
-### Ta hänsyn till redan utnyttjat avdrag
+### Account for already-used deductions
 
 ```ts
-beraknaAvdrag({
-  typ: "RUT",
-  arbetskostnad: 200_000,
-  personer: [{
+calculateDeduction({
+  kind: "RUT",
+  laborCost: 200_000,
+  persons: [{
     id: "a",
-    redanUtnyttjat: { rot: 50_000 } // har redan max-utnyttjat ROT
+    alreadyUsed: { rot: 50_000 } // already maxed out ROT
   }],
 });
-// faktisktAvdrag: 25_000 (75 000 totaltak − 50 000 redan ROT)
+// grantedDeduction: 25_000 (75 000 combined cap − 50 000 already ROT)
 ```
 
-## Validera faktura-fält
+## Validate invoice fields
 
 ```ts
-import { valideraFaktura } from "rot-rut-avdrag";
+import { validateInvoice } from "rot-rut-avdrag";
 
-const fel = valideraFaktura({
-  typ: "ROT",
-  kopareCpr: "199001011234",
-  utforareOrgnr: "556677-8899",
-  arbetskostnad: 50_000,
-  begartBelopp: 15_000,
+const errors = validateInvoice({
+  kind: "ROT",
+  buyerPersonnummer: "199001011234",
+  contractorOrgnummer: "556677-8899",
+  laborCost: 50_000,
+  requestedAmount: 15_000,
   fastighetsbeteckning: "STOCKHOLM SKARPNÄCK 1:14",
-  datumUtfortArbete: "2026-04-15",
+  workDate: "2026-04-15",
 });
-// fel === [] → giltig faktura
+// errors === [] → valid invoice
 ```
 
-## Vad paketet **inte** gör
+A few field names stay in Swedish (`fastighetsbeteckning`,
+`buyerPersonnummer`, `contractorOrgnummer`, `brfApartmentNumber`,
+`brfOrgnummer`) because they map 1:1 to Skatteverket's official form
+fields. Easier for devs who have the form in front of them.
 
-- **Validerar inte personnummer/orgnummer-checksumma.** Använd
-  [`personnummer`](https://npmjs.com/package/personnummer) och
+## What this package does **not** do
+
+- **Does not validate personnummer/orgnummer Luhn checksums.** Use
+  [`personnummer`](https://npmjs.com/package/personnummer) and
   [`organisationsnummer`](https://npmjs.com/package/organisationsnummer)
-  för det.
-- **Skickar inget till Skatteverket.** Ingen API-integration ingår — paketet
-  räknar bara ut beloppen och validerar fältfältet.
-- **Avgör inte om en tjänst är ROT- eller RUT-grundande.** Listan över
-  godkända arbeten är lång och förändras — kolla mot Skatteverket.
-- **Räknar inte med Grön teknik-avdrag** (solceller, laddstolpar). Det är
-  ett separat avdrag med egna regler.
+  for that.
+- **Does not call Skatteverket.** No API integration — just numbers and
+  field validation.
+- **Does not decide if a service qualifies for ROT or RUT.** The list of
+  qualifying work is long and changes — check Skatteverket.
+- **Does not include the Grön teknik (green tech) deduction** for
+  solar panels and EV chargers. That is a separate deduction with its
+  own rules.
 
 ## Roadmap
 
-- [ ] 2025 års regler (för retroaktiva beräkningar)
-- [ ] Grön teknik-avdrag (`typ: "GRON"`)
-- [ ] CLI: `npx rot-rut-avdrag --typ=ROT --arbetskostnad=50000`
-- [ ] Generera komplett SKV 4528-payload (JSON som kan POSTas till Skatteverkets API)
+- [ ] 2025 rules (for retroactive calculations)
+- [ ] Grön teknik (`kind: "GREEN_TECH"`)
+- [ ] CLI: `npx rot-rut-avdrag --kind=ROT --labor-cost=50000`
+- [ ] Generate a complete SKV 4528 payload (JSON ready to POST to
+      Skatteverket's e-service)
 
 ## License
 
-MIT — se [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

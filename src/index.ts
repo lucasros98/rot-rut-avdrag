@@ -1,12 +1,12 @@
-export { beraknaAvdrag } from "./berakna";
-export { valideraFaktura } from "./faktura";
-export { ARS_REGLER, reglerForAr } from "./regler";
+export { calculateDeduction } from "./calculate";
+export { validateInvoice } from "./invoice";
+export { RULES_BY_YEAR, getRulesForYear } from "./rules";
 export type {
-  ArsRegler,
-  Avdragstyp,
-  BeraknaInput,
-  BeraknaResultat,
-  PerPersonResultat,
+  CalculationInput,
+  CalculationResult,
+  DeductionKind,
+  PerPersonResult,
   Person,
+  YearRules,
 } from "./types";
-export type { FakturaInput, FakturaValideringsfel } from "./faktura";
+export type { InvoiceInput, InvoiceValidationError } from "./invoice";
