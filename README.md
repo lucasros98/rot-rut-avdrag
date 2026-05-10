@@ -128,14 +128,6 @@ fields. Easier for devs who have the form in front of them.
   solar panels and EV chargers. That is a separate deduction with its
   own rules.
 
-## Roadmap
-
-- [ ] 2025 rules (for retroactive calculations)
-- [ ] Grön teknik (`kind: "GREEN_TECH"`)
-- [ ] CLI: `npx rot-rut-avdrag --kind=ROT --labor-cost=50000`
-- [ ] Generate a complete SKV 4528 payload (JSON ready to POST to
-      Skatteverket's e-service)
-
 ## License
 
 MIT — see [LICENSE](LICENSE).
